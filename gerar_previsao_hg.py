@@ -12,7 +12,6 @@ HG_URL  = f"https://api.hgbrasil.com/weather?lat={LAT}&lon={LON}&key={HG_KEY}"
 
 ICON_BASE = "https://raw.githubusercontent.com/erikflowers/weather-icons/master/svg/wi-{}.svg"
 
-# Mapeamento de condition_slug do HG Brasil para ícones weather-icons
 ICON_MAP = {
     "clear_day":      ("day-sunny",     (245,158,11)),
     "clear_night":    ("night-clear",   (99,102,241)),
@@ -31,28 +30,8 @@ ICON_MAP = {
     "none_night":     ("night-cloudy",  (100,116,139)),
 }
 
-# Mapeamento de condition do forecast (pode ser diferente do slug atual)
-FORECAST_ICON_MAP = {
-    "clear_day":      ("day-sunny",     (245,158,11)),
-    "clear_night":    ("night-clear",   (99,102,241)),
-    "cloud":          ("cloudy",        (100,116,139)),
-    "cloudly_day":    ("day-cloudy",    (148,163,184)),
-    "cloudly_night":  ("night-cloudy",  (100,116,139)),
-    "fog":            ("fog",           (148,163,184)),
-    "hail":           ("hail",          (147,197,253)),
-    "rain":           ("rain",          (59,130,246)),
-    "rain_night":     ("night-rain",    (59,130,246)),
-    "sleet":          ("sleet",         (147,197,253)),
-    "snow":           ("snow",          (147,197,253)),
-    "storm":          ("storm-showers", (99,102,241)),
-    "storm_night":    ("storm-showers", (99,102,241)),
-    "none_day":       ("day-cloudy",    (148,163,184)),
-    "none_night":     ("night-cloudy",  (100,116,139)),
-}
-
-def wmo_icone(condition, forecast=False):
-    m = FORECAST_ICON_MAP if forecast else ICON_MAP
-    return m.get(condition, ("day-cloudy", (148,163,184)))
+def wmo_icone(condition):
+    return ICON_MAP.get(condition, ("day-cloudy", (148,163,184)))
 
 def cache_icone(nome, cor, tamanho=52):
     cor_str = f"{cor[0]}-{cor[1]}-{cor[2]}"
@@ -161,8 +140,11 @@ def gerar_imagem(dados):
 
     draw.line([(193,8),(193,ALTURA-8)], fill=(195,210,230), width=1)
 
+    # Usar apenas os dias disponíveis (máximo 3 dias além de hoje)
+    dias_disponiveis = min(len(forecast) - 1, 3)
     row_h = (ALTURA - 16) // 3
-    for i in range(1, 4):
+
+    for i in range(1, dias_disponiveis + 1):
         ri  = i - 1
         ry  = 8 + ri * row_h
         if ri > 0:
@@ -179,7 +161,7 @@ def gerar_imagem(dados):
         draw.text((200, cy_row),    nome_dia(dia.get("weekday",""), i), font=fb10, fill=(70,70,120))
         draw.text((200, cy_row+14), desc_i[:14],                        font=f9,   fill=(110,120,165))
 
-        nome_ic3, cor_ic3 = wmo_icone(cond_i, forecast=True)
+        nome_ic3, cor_ic3 = wmo_icone(cond_i)
         ic = cache_icone(nome_ic3, cor_ic3, tamanho=30)
         colar_icone(img, ic, 282, cy_row+10)
 
@@ -216,6 +198,7 @@ def main():
     print("Buscando dados HG Brasil...")
     dados = buscar_previsao()
     print(f"Condição: {dados.get('description')} | Temp: {dados['forecast'][0]['max']}°/{dados['forecast'][0]['min']}°")
+    print(f"Dias disponíveis no forecast: {len(dados['forecast'])}")
     print("Gerando imagem...")
     img = gerar_imagem(dados)
     img.save("previsao_hg.png", "PNG", optimize=True)
