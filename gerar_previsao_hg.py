@@ -229,7 +229,8 @@ def gerar_imagem(hg, om):
     ic_hoje = cache_icone(nome_ic, cor_ic, tamanho=54)
     colar_icone(img, ic_hoje, 42, 65)
 
-    draw.text((78, 40), f"{tmax0}°/{tmin0}°", font=fb28, fill=(25,25,60))
+    # Mínima à esquerda, máxima à direita
+    draw.text((78, 40), f"{tmin0}°/{tmax0}°", font=fb28, fill=(25,25,60))
     draw.text((90, 78), desc0[:18],            font=fb11, fill=(80,80,130))
 
     cy_info = 106
@@ -296,11 +297,12 @@ def gerar_imagem(hg, om):
             tw_mm  = draw.textlength(txt_mm, font=f9)
             draw.text((282 - int(tw_mm)//2, cy_row+26), txt_mm, font=f9, fill=(70,130,210))
 
-        t_txt = f"{dia['tx']}°"
+        # Mínima à esquerda, máxima à direita
         n_txt = f"{dia['tn']}°"
-        tw    = draw.textlength(t_txt, font=fb11)
-        draw.text((LARGURA-58,           cy_row), t_txt, font=fb11, fill=(210,70,30))
-        draw.text((LARGURA-58+int(tw)+3, cy_row), n_txt, font=fb11, fill=(60,130,210))
+        t_txt = f"{dia['tx']}°"
+        tw    = draw.textlength(n_txt, font=fb11)
+        draw.text((LARGURA-58,           cy_row), n_txt, font=fb11, fill=(60,130,210))
+        draw.text((LARGURA-58+int(tw)+3, cy_row), t_txt, font=fb11, fill=(210,70,30))
 
     try:
         logo_url = "https://raw.githubusercontent.com/gitprocessoscoopermil/previsao-tempo/main/logotipo-coopermil-jpg.jpg"
