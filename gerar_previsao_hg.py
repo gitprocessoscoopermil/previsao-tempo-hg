@@ -36,6 +36,31 @@ HG_ICON_MAP = {
     "none_night":     ("night-cloudy",  (100,116,139)),
 }
 
+HG_DESC_MAP = {
+    "Tempo limpo":              "Céu Limpo",
+    "Céu limpo":                "Céu Limpo",
+    "Ensolarado":               "Céu Limpo",
+    "Parcialmente nublado":     "Parc. Nublado",
+    "Nublado":                  "Nublado",
+    "Muitas nuvens":            "Nublado",
+    "Encoberto":                "Nublado",
+    "Névoa":                    "Névoa",
+    "Neblina":                  "Névoa",
+    "Garoa":                    "Garoa",
+    "Chuva fraca":              "Chuva",
+    "Chuva moderada":           "Chuva",
+    "Chuva forte":              "Chuva Forte",
+    "Chuva":                    "Chuva",
+    "Pancadas de chuva":        "Pancadas",
+    "Pancadas":                 "Pancadas",
+    "Neve fraca":               "Neve",
+    "Neve":                     "Neve",
+    "Neve forte":               "Neve Forte",
+    "Tempestade":               "Tempestade",
+    "Tempestade com granizo":   "Tempestade",
+    "Trovoada":                 "Tempestade",
+}
+
 OM_ICON_MAP = {
     0:  ("day-sunny",      (245,158,11)),
     1:  ("day-cloudy",     (148,163,184)),
@@ -86,6 +111,9 @@ OM_DESC_MAP = {
 
 def hg_icone(condition):
     return HG_ICON_MAP.get(condition, ("day-cloudy", (148,163,184)))
+
+def hg_desc(descricao):
+    return HG_DESC_MAP.get(descricao, descricao)
 
 def om_icone(wmo):
     return OM_ICON_MAP.get(wmo, ("day-cloudy", (148,163,184)))
@@ -191,7 +219,7 @@ def gerar_imagem(hg, om):
     chuva0    = hoje.get("rain", 0) or 0
     umid      = hg.get("humidity", 0) or 0
     vento0    = hg.get("wind_speedy", "0 km/h")
-    desc0     = hg.get("description", hoje.get("description", ""))
+    desc0     = hg_desc(hg.get("description", hoje.get("description", "")))
     sr        = converter_hora(hg.get("sunrise", "--:--"))
     ss        = converter_hora(hg.get("sunset",  "--:--"))
 
@@ -229,7 +257,7 @@ def gerar_imagem(hg, om):
         d = forecast[1]
         dias.append({
             "nome":   nome_dia_hg(d.get("weekday",""), 1),
-            "desc":   d.get("description", ""),
+            "desc":   hg_desc(d.get("description", "")),
             "tx":     d["max"],
             "tn":     d["min"],
             "chuva":  d.get("rain", 0) or 0,
