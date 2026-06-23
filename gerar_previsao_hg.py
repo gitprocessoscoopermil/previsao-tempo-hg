@@ -62,6 +62,17 @@ def colar_icone(img, ic, cx, cy):
     iw, ih = ic.size
     img.paste(ic, (cx - iw//2, cy - ih//2), ic)
 
+def converter_hora(hora_str):
+    try:
+        t = datetime.strptime(hora_str.strip(), "%I:%M %p")
+        return t.strftime("%H:%M")
+    except:
+        try:
+            t = datetime.strptime(hora_str.strip(), "%I:%M%p")
+            return t.strftime("%H:%M")
+        except:
+            return hora_str
+
 def buscar_previsao():
     r = requests.get(HG_URL, timeout=15)
     r.raise_for_status()
@@ -110,8 +121,8 @@ def gerar_imagem(dados):
     umid      = dados.get("humidity", 0) or 0
     vento0    = dados.get("wind_speedy", "0 km/h")
     desc0     = dados.get("description", hoje.get("description", ""))
-    sr        = dados.get("sunrise", "--:--")
-    ss        = dados.get("sunset",  "--:--")
+    sr        = converter_hora(dados.get("sunrise", "--:--"))
+    ss        = converter_hora(dados.get("sunset",  "--:--"))
 
     draw.text((14, 10), "Santa Rosa - RS", font=fb13, fill=(40,40,80))
 
@@ -140,8 +151,8 @@ def gerar_imagem(dados):
 
     draw.line([(193,8),(193,ALTURA-8)], fill=(195,210,230), width=1)
 
-    # Usar apenas os dias disponíveis (máximo 3 dias além de hoje)
     dias_disponiveis = min(len(forecast) - 1, 3)
+    print(f"Usando {dias_disponiveis} dias além de hoje")
     row_h = (ALTURA - 16) // 3
 
     for i in range(1, dias_disponiveis + 1):
