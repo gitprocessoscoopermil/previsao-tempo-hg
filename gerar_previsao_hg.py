@@ -37,28 +37,28 @@ HG_ICON_MAP = {
 }
 
 HG_DESC_MAP = {
-    "Tempo limpo":              "Céu Limpo",
-    "Céu limpo":                "Céu Limpo",
-    "Ensolarado":               "Céu Limpo",
+    "Tempo limpo":              "Tempo limpo",
+    "Céu limpo":                "Céu limpo",
+    "Ensolarado":               "Ensolarado",
     "Parcialmente nublado":     "Parc. Nublado",
     "Nublado":                  "Nublado",
-    "Muitas nuvens":            "Nublado",
-    "Encoberto":                "Nublado",
+    "Muitas nuvens":            "Muitas nuvens",
+    "Encoberto":                "Encoberto",
     "Névoa":                    "Névoa",
-    "Neblina":                  "Névoa",
+    "Neblina":                  "Neblina",
     "Garoa":                    "Garoa",
-    "Chuva fraca":              "Chuva",
-    "Chuva moderada":           "Chuva",
-    "Chuva forte":              "Chuva Forte",
+    "Chuva fraca":              "Chuva fraca",
+    "Chuva moderada":           "Chuva moderada",
+    "Chuva forte":              "Chuva forte",
     "Chuva":                    "Chuva",
     "Pancadas de chuva":        "Pancadas",
     "Pancadas":                 "Pancadas",
-    "Neve fraca":               "Neve",
+    "Neve fraca":               "Neve fraca",
     "Neve":                     "Neve",
-    "Neve forte":               "Neve Forte",
+    "Neve forte":               "Neve forte",
     "Tempestade":               "Tempestade",
-    "Tempestade com granizo":   "Tempestade",
-    "Trovoada":                 "Tempestade",
+    "Tempestade com granizo":   "Granizo",
+    "Trovoada":                 "Trovoada",
 }
 
 OM_ICON_MAP = {
@@ -229,7 +229,6 @@ def gerar_imagem(hg, om):
     ic_hoje = cache_icone(nome_ic, cor_ic, tamanho=54)
     colar_icone(img, ic_hoje, 42, 65)
 
-    # Mínima à esquerda, máxima à direita
     draw.text((78, 40), f"{tmin0}°/{tmax0}°", font=fb28, fill=(25,25,60))
     draw.text((90, 78), desc0[:18],            font=fb11, fill=(80,80,130))
 
@@ -297,7 +296,6 @@ def gerar_imagem(hg, om):
             tw_mm  = draw.textlength(txt_mm, font=f9)
             draw.text((282 - int(tw_mm)//2, cy_row+26), txt_mm, font=f9, fill=(70,130,210))
 
-        # Mínima à esquerda, máxima à direita
         n_txt = f"{dia['tn']}°"
         t_txt = f"{dia['tx']}°"
         tw    = draw.textlength(n_txt, font=fb11)
