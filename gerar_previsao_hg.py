@@ -1,6 +1,7 @@
 import requests, cairosvg, io, urllib.request, numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
 
 LAT     = -27.8681
@@ -12,28 +13,25 @@ HG_URL  = f"https://api.hgbrasil.com/weather?lat={LAT}&lon={LON}&key={HG_KEY}"
 OM_URL  = (
     f"https://api.open-meteo.com/v1/forecast"
     f"?latitude={LAT}&longitude={LON}"
-    f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
+    f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max"
     f"&timezone=America/Sao_Paulo&forecast_days=4"
 )
 
 ICON_BASE = "https://raw.githubusercontent.com/erikflowers/weather-icons/master/svg/wi-{}.svg"
 
+# Mapa reestruturado: cada condição tem variante "day" e "night" explícita,
+# assim a escolha de dia/noite não depende do condition_slug (que pode vir em cache).
 HG_ICON_MAP = {
-    "clear_day":      ("day-sunny",     (245,158,11)),
-    "clear_night":    ("night-clear",   (99,102,241)),
-    "cloud":          ("cloudy",        (100,116,139)),
-    "cloudly_day":    ("day-cloudy",    (148,163,184)),
-    "cloudly_night":  ("night-cloudy",  (100,116,139)),
-    "fog":            ("fog",           (148,163,184)),
-    "hail":           ("hail",          (147,197,253)),
-    "rain":           ("rain",          (59,130,246)),
-    "rain_night":     ("night-rain",    (59,130,246)),
-    "sleet":          ("sleet",         (147,197,253)),
-    "snow":           ("snow",          (147,197,253)),
-    "storm":          ("storm-showers", (99,102,241)),
-    "storm_night":    ("storm-showers", (99,102,241)),
-    "none_day":       ("day-cloudy",    (148,163,184)),
-    "none_night":     ("night-cloudy",  (100,116,139)),
+    "clear":   {"day": ("day-sunny",     (245,158,11)), "night": ("night-clear",   (99,102,241))},
+    "cloud":   {"day": ("cloudy",        (100,116,139)), "night": ("cloudy",        (100,116,139))},
+    "cloudly": {"day": ("day-cloudy",    (148,163,184)), "night": ("night-cloudy",  (100,116,139))},
+    "fog":     {"day": ("fog",           (148,163,184)), "night": ("fog",           (148,163,184))},
+    "hail":    {"day": ("hail",          (147,197,253)), "night": ("hail",          (147,197,253))},
+    "rain":    {"day": ("rain",          (59,130,246)),  "night": ("night-rain",    (59,130,246))},
+    "sleet":   {"day": ("sleet",         (147,197,253)), "night": ("sleet",         (147,197,253))},
+    "snow":    {"day": ("snow",          (147,197,253)), "night": ("snow",          (147,197,253))},
+    "storm":   {"day": ("storm-showers", (99,102,241)),  "night": ("storm-showers", (99,102,241))},
+    "none":    {"day": ("day-cloudy",    (148,163,184)), "night": ("night-cloudy",  (100,116,139))},
 }
 
 HG_DESC_MAP = {
@@ -109,8 +107,12 @@ OM_DESC_MAP = {
     99: "Tempestade",
 }
 
-def hg_icone(condition):
-    return HG_ICON_MAP.get(condition, ("day-cloudy", (148,163,184)))
+def hg_icone(condition, is_dia=True):
+    # Remove sufixo _day/_night do condition_slug e escolhe a variante
+    # pelo horário real (is_dia), não pelo que a API HG Brasil diz que é "agora".
+    base = (condition or "none").replace("_day", "").replace("_night", "")
+    entry = HG_ICON_MAP.get(base, HG_ICON_MAP["none"])
+    return entry["day"] if is_dia else entry["night"]
 
 def hg_desc(descricao):
     return HG_DESC_MAP.get(descricao, descricao)
@@ -120,6 +122,19 @@ def om_icone(wmo):
 
 def om_desc(wmo):
     return OM_DESC_MAP.get(wmo, "Variável")
+
+def esta_de_dia(sunrise_str, sunset_str):
+    """Compara o horário real (America/Sao_Paulo) com sunrise/sunset já em HH:MM.
+    sunrise/sunset não mudam minuto a minuto, então continuam válidos mesmo
+    se a resposta da HG Brasil vier de cache; só o 'agora' precisa ser real."""
+    tz = ZoneInfo("America/Sao_Paulo")
+    agora = datetime.now(tz).time()
+    try:
+        sr_t = datetime.strptime(sunrise_str, "%H:%M").time()
+        ss_t = datetime.strptime(sunset_str, "%H:%M").time()
+    except Exception:
+        return True
+    return sr_t <= agora <= ss_t
 
 def cache_icone(nome, cor, tamanho=52):
     cor_str = f"{cor[0]}-{cor[1]}-{cor[2]}"
@@ -218,14 +233,22 @@ def gerar_imagem(hg, om):
     tmin0     = hoje["min"]
     chuva0    = hoje.get("rain", 0) or 0
     umid      = hg.get("humidity", 0) or 0
-    vento0    = hg.get("wind_speedy", "0 km/h")
     desc0     = hg_desc(hg.get("description", hoje.get("description", "")))
     sr        = converter_hora(hg.get("sunrise", "--:--"))
     ss        = converter_hora(hg.get("sunset",  "--:--"))
+    is_dia    = esta_de_dia(sr, ss)
+
+    # Vento de hoje: usa o máximo do dia do Open-Meteo em vez do vento
+    # instantâneo da HG Brasil (que reflete só o momento da consulta/cache).
+    om_d = om["daily"]
+    if "windspeed_10m_max" in om_d and len(om_d["windspeed_10m_max"]) > 0:
+        vento0 = f"{round(om_d['windspeed_10m_max'][0])} km/h"
+    else:
+        vento0 = hg.get("wind_speedy", "0 km/h")
 
     draw.text((14, 10), "Santa Rosa - RS", font=fb13, fill=(40,40,80))
 
-    nome_ic, cor_ic = hg_icone(condition)
+    nome_ic, cor_ic = hg_icone(condition, is_dia)
     ic_hoje = cache_icone(nome_ic, cor_ic, tamanho=54)
     colar_icone(img, ic_hoje, 42, 65)
 
@@ -233,7 +256,7 @@ def gerar_imagem(hg, om):
     draw.text((90, 78), desc0[:18],            font=fb11, fill=(80,80,130))
 
     cy_info = 106
-    nome_ic2, cor_ic2 = hg_icone("rain")
+    nome_ic2, cor_ic2 = hg_icone("rain", is_dia)
     ic_chuva = cache_icone(nome_ic2, cor_ic2, tamanho=18)
     colar_icone(img, ic_chuva, 20, cy_info+6)
     draw.text((32, cy_info),    f"{chuva0:.0f} mm", font=fb10, fill=(50,90,200))
@@ -261,10 +284,9 @@ def gerar_imagem(hg, om):
             "tx":     d["max"],
             "tn":     d["min"],
             "chuva":  d.get("rain", 0) or 0,
-            "icone":  hg_icone(d.get("condition", "none_day")),
+            "icone":  hg_icone(d.get("condition", "none_day"), True),
         })
 
-    om_d = om["daily"]
     for idx in [2, 3]:
         if idx < len(om_d["time"]):
             wmo = om_d["weathercode"][idx]
@@ -321,12 +343,18 @@ def gerar_imagem(hg, om):
     return img
 
 def main():
+    agora_br = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    print(f"[DEBUG] Horário local (São Paulo): {agora_br.strftime('%Y-%m-%d %H:%M:%S')}")
+
     print("Buscando dados HG Brasil...")
     hg = buscar_hg()
+    print(f"[DEBUG] HG condition_slug: {hg.get('condition_slug')} | from_cache no JSON raiz")
     print(f"HG - Condição: {hg.get('description')} | Temp: {hg['forecast'][0]['max']}°/{hg['forecast'][0]['min']}°")
+
     print("Buscando dados Open-Meteo...")
     om = buscar_om()
     print(f"OM - Dias disponíveis: {len(om['daily']['time'])}")
+
     print("Gerando imagem...")
     img = gerar_imagem(hg, om)
     img.save("previsao_hg.png", "PNG", optimize=True)
